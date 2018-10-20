@@ -1,0 +1,68 @@
+version: 2.1
+
+# https://circleci.com/blog/circleci-hacks-reuse-yaml-in-your-circleci-config-with-yaml/
+aliases:
+  - &cargo_cache_paths
+    paths:
+      - /usr/local/cargo/registry
+      - target
+      - target/debug/.fingerprint
+      - target/debug/build
+      - target/debug/deps
+      - target/release/.fingerprint
+      - target/release/build
+      - target/release/deps
+      - /usr/local/cargo/bin
+
+
+jobs:
+  # Build the project and run the tests
+  build:
+    docker:
+      - image: rust:1.29-slim
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - v1-cargo-cache-{{ checksum "Cargo.lock" }}
+            - v1-cargo-cache-base
+      - run:
+          name: Print version information
+          command: rustc --version; cargo --version; rustup --version
+      - run: cargo test
+      - run: cargo build --release
+      - save_cache:
+          <<: *cargo_cache_paths
+          key: v1-cargo-cache-{{ checksum "Cargo.lock" }}
+
+  # Clean build the project and save it to the base cache key
+  build-clean:
+    docker:
+      - image: rust:1.29-slim
+    steps:
+      - checkout
+      - run: cargo build
+      - run: cargo build --release
+      - save_cache:
+          <<: *cargo_cache_paths
+          key: v1-cargo-cache-base-{{ .BuildNum }}
+
+
+workflows:
+  version: 2
+  build:
+    jobs:
+      - build
+  # Run a nightly build that rebuilds the project from
+  # scratch to re-populate the "base" cache
+  nightly:
+    triggers:
+      - schedule:
+          # Midnight PST
+          cron: "0 8 * * *"
+          filters:
+            branches:
+              only:
+                - master
+    jobs:
+      - build-clean
