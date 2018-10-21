@@ -20,7 +20,7 @@ jobs:
   # Build the project and run the tests
   build:
     docker:
-      - image: rust:1.29
+      - image: darrentsung/docker-amethyst-rust:1.29
     steps:
       - checkout
       - restore_cache:
@@ -39,7 +39,7 @@ jobs:
   # Clean build the project and save it to the base cache key
   build-clean:
     docker:
-      - image: rust:1.29
+      - image: darrentsung/docker-amethyst-rust:1.29
     steps:
       - checkout
       - run: cargo build
